@@ -6,6 +6,7 @@ import chisel3.internal.sourceinfo.SourceInfo
 import chisel3.stage.ChiselStage
 import chisel3.util.random.FibonacciLFSR
 import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp, NexusNode, RenderedEdge, SimpleNodeImp, SinkNode, SourceNode, ValName}
+import freechips.rocketchip.util.GeneratorApp
 
 
 case class UpwardParam(width: Int)
@@ -107,7 +108,7 @@ class AdderMonitor(width: Int, numOperands: Int)(implicit p: Parameters) extends
 
 /** top-level connector */
 class AdderTestHarness()(implicit p: Parameters) extends LazyModule {
-  val numOperands = 2
+  val numOperands = 5
   val adder = LazyModule(new Adder)
   // 8 will be the downward-traveling widths from our drivers
   val drivers = Seq.fill(numOperands) {
@@ -131,9 +132,9 @@ class AdderTestHarness()(implicit p: Parameters) extends LazyModule {
   override lazy val desiredName = "AdderTestHarness"
 }
 
-object Main extends App {
+object Main extends App with GeneratorApp {
   println("Generating Adder.AdderDiplomacy hardware")
-  (new ChiselStage).emitVerilog(
-    LazyModule(new AdderTestHarness()(Parameters.empty)).module,
-    Array("--target-dir", "generated"))
+  val adder = LazyModule(new AdderTestHarness()(Parameters.empty))
+  writeOutputFile("generated/Adder_Tutorial", "Adder_Tutorial.v", (new ChiselStage).emitVerilog(adder.module))
+  writeOutputFile("generated/Adder_Tutorial", "Adder_Tutorial.graphml", adder.graphML)
 }
