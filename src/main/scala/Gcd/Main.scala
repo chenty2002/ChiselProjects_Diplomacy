@@ -60,9 +60,6 @@ class GcdDriver(width: Int, numOutputs: Int)(implicit p: Parameters) extends Laz
 
   lazy val module = new LazyModuleImp(this) {
     val w = node.edges.out.head.width
-    val io = IO(new Bundle() {
-      val inputs = Input(UInt(w.W))
-    })
     node.out.foreach {
       case (num, _) =>
         num := FibonacciLFSR.maxPeriod(w)
@@ -140,7 +137,7 @@ class GcdTest(width: Int, numbers: Int)(implicit p: Parameters) extends LazyModu
 }
 
 class GcdTestHarness()(implicit p: Parameters) extends LazyModule {
-  val numbers_size = 10
+  val numbers_size = 2
   val gcd = LazyModule(new Gcd())
   val drivers = Seq.fill(numbers_size) {
     LazyModule(new GcdDriver(8, 2))
@@ -166,7 +163,6 @@ class GcdTestHarness()(implicit p: Parameters) extends LazyModule {
 
 object Main extends App {
   println("DiplomacyGcd")
-  (new ChiselStage).emitVerilog(
-    LazyModule(new GcdTestHarness()(Parameters.empty)).module,
-    Array("--target-dir", "generated/Gcd"))
+  val stage = new ChiselStage
+  stage.emitVerilog(LazyModule(new GcdTestHarness()(Parameters.empty)).module, Array("--target-dir", "generated/Gcd"))
 }
