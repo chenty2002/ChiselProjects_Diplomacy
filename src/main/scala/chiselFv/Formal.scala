@@ -6,7 +6,7 @@ import freechips.rocketchip.diplomacy.LazyModuleImp
 
 
 trait Formal {
-  this: LazyModuleImp => 
+  this: Module => 
   
   private val resetCounter = Module(new ResetCounter)
   resetCounter.io.clk := this.clock

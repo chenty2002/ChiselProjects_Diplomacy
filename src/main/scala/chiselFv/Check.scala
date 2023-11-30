@@ -2,7 +2,6 @@ package chiselFv
 
 import chisel3.RawModule
 import chisel3.stage.{ChiselGeneratorAnnotation, ChiselStage, DesignAnnotation}
-import freechips.rocketchip.diplomacy.LazyModule
 
 import java.io.{File, PrintWriter}
 import java.nio.file.Paths
@@ -42,20 +41,20 @@ object Check {
        |""".stripMargin
   }
 
-  def bmc[T <: LazyModule](dutGen: () => T, depth: Int = 20) = {
+  def bmc[T <: RawModule](dutGen: () => T, depth: Int = 20) = {
     check(dutGen, "bmc", depth)
   }
 
-  def kInduction[T <: LazyModule](dutGen: () => T, depth: Int = 20) = {
+  def kInduction[T <: RawModule](dutGen: () => T, depth: Int = 20) = {
     check(dutGen, "prove", depth)
   }
 
-  def pdr[T <: LazyModule](dutGen: () => T, depth: Int = 20) = {
+  def pdr[T <: RawModule](dutGen: () => T, depth: Int = 20) = {
     check(dutGen, "abcPdr", depth)
   }
 
 
-  private def check[T <: LazyModule](dutGen: () => T, mode: String, depth: Int) = {
+  private def check[T <: RawModule](dutGen: () => T, mode: String, depth: Int) = {
     generateRTL(dutGen, "_" + mode)
     val mod = modName(dutGen)
     val sbyFileName = s"$mod.sby"
@@ -113,13 +112,13 @@ object Check {
   }
 
 
-  def generateRTL[T <: LazyModule] (dutGen: () => T, targetDirSufix: String = "_build", outputFile: String = "") = {
+  def generateRTL[T <: RawModule] (dutGen: () => T, targetDirSufix: String = "_build", outputFile: String = "") = {
     val name = modName(dutGen)
     val targetDir = name + targetDirSufix
     val arg = new ArrayBuffer[String]
     arg ++= Array("--target-dir", targetDir)
     val state = new ChiselStage()
-    val rtl = state.emitSystemVerilog(dutGen().module, arg.toArray)
+    val rtl = state.emitSystemVerilog(dutGen(), arg.toArray)
 
     val suffix = "sv"
     val currentPath = Paths.get(System.getProperty("user.dir"))
@@ -170,7 +169,7 @@ object Check {
     }
   }
 
-  def generateBtor[T <: LazyModule] (dutGen: () => T, targetDirSufix: String = "_btor_gen", outputFile: String = "")  = {
+  def generateBtor[T <: RawModule] (dutGen: () => T, targetDirSufix: String = "_btor_gen", outputFile: String = "")  = {
     val name = modName(dutGen)
     val targetDir = name + targetDirSufix
     generateRTL(dutGen, targetDirSufix, outputFile)
@@ -189,8 +188,8 @@ object Check {
 
   }
 
-  def modName[T <: LazyModule] (dutGen: () => T): String = {
-    val annos = ChiselGeneratorAnnotation(() => dutGen().module).elaborate
+  def modName[T <: RawModule] (dutGen: () => T): String = {
+    val annos = ChiselGeneratorAnnotation(() => dutGen()).elaborate
     val designAnno = annos.last
     designAnno match {
       case DesignAnnotation(dut) => dut.name

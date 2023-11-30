@@ -157,5 +157,5 @@ object Main extends App {
   FileRegisters.writeOutputFile("generated/Adder_Tutorial", "Adder_Tutorial.v", (new ChiselStage).emitVerilog(
     harness.module
   ))
-  Check.bmc(() => LazyModule(new AdderTestHarness()(Parameters.empty)), depth=50)
+  Check.bmc(() => LazyModule(new AdderTestHarness()(Parameters.empty)).module, depth=50)
 }
