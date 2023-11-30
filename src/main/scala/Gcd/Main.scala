@@ -1,6 +1,7 @@
 package Gcd
 
-import chipsalliance.rocketchip.config.Parameters
+// import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.internal.sourceinfo.SourceInfo
 import chisel3.stage.ChiselStage
@@ -124,7 +125,7 @@ class GcdTest(width: Int, numbers: Int)(implicit p: Parameters) extends LazyModu
   val nodeInput = Seq.fill(numbers)(new GcdTestInputNode(UpwardParam(width)))
   val nodeResult = new GcdTestResultNode(UpwardParam(width))
 
-  lazy val module = new LazyModuleImp(this) {
+  class CheckerModuleImp(wrapper: LazyModule) extends LazyModuleImp(wrapper) {
     val io = IO(new Bundle {
       val error = Output(Bool())
     })
@@ -132,6 +133,9 @@ class GcdTest(width: Int, numbers: Int)(implicit p: Parameters) extends LazyModu
       nodeResult.in.head._1.done &&
         nodeInput.map(_.in.head._1 % nodeResult.in.head._1.number =/= 0.U).reduce(_ || _)
   }
+
+  
+  lazy val module = new CheckerModuleImp(this)
 
   override lazy val desiredName = "GcdTest"
 }

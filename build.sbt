@@ -1,6 +1,6 @@
 ThisBuild / scalaVersion     := "2.12.10"
 ThisBuild / version          := "0.1.0"
-
+// chisel 3.3.3 too old for chiselfv
 lazy val root = (project in file("."))
   .settings(
     name := "Diplomacy",

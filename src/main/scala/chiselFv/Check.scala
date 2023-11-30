@@ -34,7 +34,7 @@ object Check {
   private def btorGenYs(files: String, top: String, targetFilename: String = "") = {
     s"""read -sv $files
        |prep -top $top -nordff
-       |flattenF
+       |flatten
        |memory -nomap
        |hierarchy -check
        |setundef -undriven -init -expose
@@ -118,8 +118,8 @@ object Check {
     val targetDir = name + targetDirSufix
     val arg = new ArrayBuffer[String]
     arg ++= Array("--target-dir", targetDir)
-    val rtl = (new ChiselStage()).emitVerilog(dutGen().module, arg.toArray)
-//    val rtl = state.emitSystemVerilog(dutGen(), arg.toArray)
+    val state = new ChiselStage()
+    val rtl = state.emitSystemVerilog(dutGen().module, arg.toArray)
 
     val suffix = "sv"
     val currentPath = Paths.get(System.getProperty("user.dir"))
@@ -191,12 +191,9 @@ object Check {
 
   def modName[T <: LazyModule] (dutGen: () => T): String = {
     val annos = ChiselGeneratorAnnotation(() => dutGen().module).elaborate
-//    val annos = (new ChiselStage).run(Seq.empty)
     val designAnno = annos.last
     designAnno match {
       case DesignAnnotation(dut) => dut.name
     }
-//    "TEST"
   }
-
 }

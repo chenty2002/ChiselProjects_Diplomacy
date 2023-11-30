@@ -1,7 +1,7 @@
 package Adder_Tutorial
 
 import Chisel.Flipped
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.experimental.IO
 import chisel3.util._
@@ -9,8 +9,8 @@ import chisel3.internal.sourceinfo.SourceInfo
 import chisel3.stage.ChiselStage
 import chisel3.util.random.FibonacciLFSR
 import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp, NexusNode, RenderedEdge, SimpleNodeImp, SinkNode, SourceNode, ValName}
-import freechips.rocketchip.util.{GeneratorApp, HeterogeneousBag}
 import chiselFv._
+import utility.FileRegisters
 
 
 case class UpwardParam(width: Int)
@@ -56,11 +56,12 @@ class Adder(implicit p: Parameters) extends LazyModule {
       ups.head
     }
   )
-  lazy val module = new LazyModuleImp(this) {
+  class AdderModuleImp(wrapper: LazyModule) extends LazyModuleImp(wrapper) {
     require(node.in.size >= 2)
     node.out.foreach(_._1 := node.in.map(_._1).reduce(_ + _))
-//    node.out.head._1 := node.in.map(_._1).reduce(_ + _)
   }
+  
+  lazy val module = new AdderModuleImp(this) 
 
   override lazy val desiredName = "Adder"
 }
@@ -72,7 +73,7 @@ class Driver(width: Int, numOutputs: Int)(implicit p: Parameters) extends LazyMo
   val node = new DriverNode(Seq.fill(numOutputs)(DownwardParam(width)))
   val output = new DriverNode(Seq(DownwardParam(width)))
 
-  lazy val module = new LazyModuleImp(this) {
+  class DriverModuleImp(wrapper: LazyModule) extends LazyModuleImp(wrapper) {
     // check that node parameters converge after negotiation
     val negotiatedWidths = node.edges.out.map(_.width)
     require(negotiatedWidths.forall(_ == negotiatedWidths.head), "outputs must all have agreed on same width")
@@ -84,6 +85,8 @@ class Driver(width: Int, numOutputs: Int)(implicit p: Parameters) extends LazyMo
     // drive signals
     node.out.foreach { case (addend, _) => addend := randomAddend }
   }
+  
+  lazy val module = new DriverModuleImp(this) 
 
   override lazy val desiredName = "Driver"
 }
@@ -96,26 +99,19 @@ class Checker(width: Int, numOperands: Int)(implicit p: Parameters) extends Lazy
   }
   val numberFromAdder = new CheckerNode(UpwardParam(width))
 
-  lazy val module = new LazyModuleImp(this) {
+  class CheckerModuleImp(wrapper: LazyModule) extends LazyModuleImp(wrapper) with Formal {
     val io = IO(new Bundle {
       val error = Output(Bool())
-//      val w = Output(UInt(4.W))
     })
-//    numberFromAdder.makeIOs()(ValName("NFA_0"))
-//    numberFromDrivers.zipWithIndex.foreach{ case (node, i) =>
-//      node.makeIOs()(ValName(s"NFD_$i"))
-//    }
 
     // print operation
-//    printf(nodeSeq.map(node => p"${node.in.head._1}").reduce(_ + p" + " + _) + p" = ${nodeSum.in.head._1}")
-//    assert(nodeSum.in.head._1 === nodeSeq.map(_.in.head._1).reduce(_ + _))
+    printf(numberFromDrivers.map(node => p"${node.in.head._1}").reduce(_ + p" + " + _) + p" = ${numberFromAdder.in.head._1}")
     // basic correctness checking
-    val chiselfv = new Formal()
-    chiselfv.assert(numberFromAdder.in.head._1 =/= numberFromDrivers.map(_.in.head._1).reduce(_ + _))
+    assert(numberFromAdder.in.head._1 === numberFromDrivers.map(_.in.head._1).reduce(_ + _))
     io.error := numberFromAdder.in.head._1 =/= numberFromDrivers.map(_.in.head._1).reduce(_ + _)
-//    io.w := numberFromAdder.edges.in.head.width.U
-//    io.error := numberFromDrivers.map(_.in.head._1).reduce(_ + _) === 1.U
   }
+
+  lazy val module = new CheckerModuleImp(this)
 
   override lazy val desiredName = "Checker"
 }
@@ -144,22 +140,22 @@ class AdderTestHarness()(implicit p: Parameters) extends LazyModule {
   }
   checker.numberFromAdder := adder.node
 
-  lazy val module = new LazyModuleImp(this) {
+  class HarnessModuleImp(wrapper: LazyModule) extends LazyModuleImp(wrapper) {
     when(checker.module.io.error) {
       printf("something went wrong")
     }
   }
 
+  lazy val module = new HarnessModuleImp(this) 
+
   override lazy val desiredName = "AdderTestHarness"
 }
 
-object Main extends App with GeneratorApp {
+object Main extends App {
   println("Generating Adder.AdderDiplomacy hardware")
-//  val harness = LazyModule(new AdderTestHarness()(Parameters.empty))
-//  println()
-//  writeOutputFile("generated/Adder_Tutorial", "Adder_Tutorial.v", (new ChiselStage).emitVerilog(
-//    harness.module
-//  ))
-  Check.bmc(() => LazyModule(new AdderTestHarness()(Parameters.empty)))
-//  writeOutputFile("generated/Adder_Tutorial", "Adder_Tutorial.graphml", adder.graphML)
+  val harness = LazyModule(new AdderTestHarness()(Parameters.empty))
+  FileRegisters.writeOutputFile("generated/Adder_Tutorial", "Adder_Tutorial.v", (new ChiselStage).emitVerilog(
+    harness.module
+  ))
+  Check.bmc(() => LazyModule(new AdderTestHarness()(Parameters.empty)), depth=50)
 }
